@@ -25,7 +25,7 @@ public class Main {
 				for(int i = 0; i < 1000000000; i++)
 				{
 					if(i % 100000000 == 0)
-						System.out.println(i/100000000 + "% Complete");
+						System.out.println(i/10000000 + "% Complete");
 					nn.learn(r);
 				}
 				nn.print();
