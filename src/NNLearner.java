@@ -2,37 +2,43 @@ import java.util.Random;
 import java.util.Arrays;
 import java.util.Collections;
 
-public class QLearner {
+public class NNLearner {
 	
 	State s = new State();
 	State p = new State();
 	State goal = new State();
-	double [][][] qTable; //X dimension, Y dimension, and number of possible moves
+	NeuralNet nn = new NeuralNet();
 	int x, y, z;
 	int action; // N(0), E(1), S(2), W(3)
 	double [][] reward;
 	
 	
 	//Default Constructor
-	QLearner(double[][] reward, State goal)
+	NNLearner(double[][] reward, State goal, Random r)
 	{
-		qTable = new double[20][10][4];
 		x = 20;
 		y = 10;
 		z = 4;
 		this.reward = reward;
 		this.goal = goal;
+		nn.layers.add(new LayerTanh(2, 8));
+		nn.layers.add(new LayerTanh(8, 16));
+		nn.layers.add(new LayerTanh(16, 4));
+		nn.init(r);
 	}
 	
 	//Specify Size of Q-table
-	QLearner(int x, int y, int possibleMoves, double[][] reward, State goal)
+	NNLearner(int x, int y, int possibleMoves, double[][] reward, State goal, Random r)
 	{
-		qTable = new double[x][y][possibleMoves];
 		this.x = x;
 		this.y = y;
 		z = possibleMoves;
 		this.reward = reward;
 		this.goal = goal;
+		nn.layers.add(new LayerTanh(2, 8));
+		nn.layers.add(new LayerTanh(8, 16));
+		nn.layers.add(new LayerTanh(16, 4));
+		nn.init(r);
 	}
 	
 	void do_action(int a, Random r)
@@ -79,38 +85,6 @@ public class QLearner {
 			return true;
 	}
 	
-	void printQ()
-	{
-		for(int y = 0; y < 10; y++)
-		{
-			for(int x = 0; x < 20; x++)
-			{
-				double bestValue = qTable[x][y][0];
-				for(int z = 1; z < 4; z++)
-					if(qTable[x][y][z] > bestValue)
-						bestValue = qTable[x][y][z];
-				System.out.print(bestValue + " ");
-			}
-			System.out.println("\n");
-		}
-	}
-	
-	void printAllQ()
-	{
-		for(int z = 0; z < 4; z++)
-		{
-			for(int y = 0; y < 10; y++)
-			{
-				for(int x = 0; x < 20; x++)
-				{
-					System.out.print(qTable[x][y][z] + " ");
-				}
-				System.out.println("\n");
-			}
-			System.out.println("\n\n\n");
-		}
-	}
-	
 	//Find best action for every state and print it out
 	void print()
 	{
@@ -120,8 +94,13 @@ public class QLearner {
 			for(int y = 0; y < 10; y++)
 			{
 				bestAction[x][y] = 0;
+				double[] best = new double[2];
+				best[0] = (double)x / 19;
+				best[1] = (double)y / 9;
+				double[] qValues = nn.forwardProp(best);
+				System.out.println(qValues[0] + qValues[1] + qValues[2] + qValues[3]);
 				for(int i = bestAction[x][y]; i < 4; i++)
-					if(qTable[x][y][i] > qTable[x][y][bestAction[x][y]])
+					if(qValues[i] > qValues[bestAction[x][y]])
 						bestAction[x][y] = i;
 			}
 		}
@@ -154,10 +133,16 @@ public class QLearner {
 	{
 		double e = 0.05;
 		
+		//get qvalues for current state
+		double[] curState = new double[2];
+		curState[0] = (double)s.x / 19;
+		curState[1] = (double)s.y / 9;
+		double[] prediction = nn.forwardProp(curState);
+		
 		//Check if all options are equal
 		boolean different = false;
 		for(int i = 0; i < z-1; i++)
-			if(qTable[s.x][s.y][i] != qTable[s.x][s.y][i+1])
+			if(prediction[i] != prediction[i+1])
 				different = true;
 		
 		if(r.nextDouble() < e || !different)
@@ -172,23 +157,36 @@ public class QLearner {
 			while(!actionIsValid(action))
 				action++;
 			for(int i = action; i < z; i++)
-				if(qTable[s.x][s.y][i] > qTable[s.x][s.y][action])
+				if(prediction[i] > prediction[action])
 					if(actionIsValid(i))
 						action = i;
 		}
+		double[] copy = Vec.copy(prediction);
+		double[] prevState = Vec.copy(curState);
 		do_action(action, r);
 		//Learn from the action (s is current state, p is previous state)
-		int a = action; //Action taken from p
+
 		int b = 0; //Best Next Action from s
-		double alphaK = 0.1;
 		double gamma = 0.97; //Reduction from next state
+		//get qvalues for current state
+		curState[0] = (double)s.x / 19;
+		curState[1] = (double)s.y / 9;
+		double[] predictionb = nn.forwardProp(curState);
 		while(!actionIsValid(b))
 			b++;
 		for(int i = b; i < z; i++)
-			if(qTable[s.x][s.y][i] > qTable[s.x][s.y][b])
+			if(predictionb[i] > predictionb[b])
 				if(actionIsValid(i))
 					b = i;
-		qTable[p.x][p.y][a] = (1 - alphaK) * qTable[p.x][p.y][a] + alphaK * (reward[s.x][s.y] + gamma * qTable[s.x][s.y][b]);
+		//System.out.println("Reward: " + reward[s.x][s.y]);
+		//System.out.println("Gamma * Prediction: " + gamma * predictionb[b]);
+		//System.out.println(b);
+		if(s.equals(goal))
+			predictionb[b] = 0;
+		copy[action] = (reward[s.x][s.y] + gamma * predictionb[b]);
+		//System.out.println(curState[0] + " " + curState[1] + " " + copy[0] + " " + copy[1] + " " + copy[2] + " " + copy[3]);
+		nn.trainIncremental(prevState, copy, 0.03);
+		//System.out.println("HERE");
 		if(s.equals(goal))
 			s = new State();
 		
