@@ -22,10 +22,10 @@ public class Main {
 			{
 				System.out.println("Using Neural Network");
 				NNLearner nn = new NNLearner(reward, goal, r);
-				for(int i = 0; i < 1000000000; i++)
+				for(int i = 0; i < 10000000; i++)
 				{
-					if(i % 100000000 == 0)
-						System.out.println(i/10000000 + "% Complete");
+					if(i % 100000 == 0)
+						System.out.println(i/100000 + "% Complete");
 					nn.learn(r);
 				}
 				nn.print();
@@ -39,7 +39,7 @@ public class Main {
 			for(int i = 0; i < 100000000; i++)
 				q.learn(r);
 			q.print();
-			q.printQ();
+			//q.printQ();
 		}
 		//q.printAllQ();
 		/*

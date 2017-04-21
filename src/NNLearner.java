@@ -21,9 +21,8 @@ public class NNLearner {
 		z = 4;
 		this.reward = reward;
 		this.goal = goal;
-		nn.layers.add(new LayerTanh(2, 8));
-		nn.layers.add(new LayerTanh(8, 16));
-		nn.layers.add(new LayerTanh(16, 4));
+		nn.layers.add(new LayerTanh(2, 20));
+		nn.layers.add(new LayerTanh(20, 4));
 		nn.init(r);
 	}
 	
@@ -35,9 +34,8 @@ public class NNLearner {
 		z = possibleMoves;
 		this.reward = reward;
 		this.goal = goal;
-		nn.layers.add(new LayerTanh(2, 8));
-		nn.layers.add(new LayerTanh(8, 16));
-		nn.layers.add(new LayerTanh(16, 4));
+		nn.layers.add(new LayerTanh(2, 20));
+		nn.layers.add(new LayerTanh(20, 4));
 		nn.init(r);
 	}
 	
